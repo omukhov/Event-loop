@@ -1,8 +1,6 @@
 import * as Carousel from "./Carousel.js";
 import { API_KEY } from "./keys.js";
 
-// import axios from "axios";
-
 // The breed selection input element.
 const breedSelect = document.getElementById("breedSelect");
 // The information section div element.
@@ -12,15 +10,58 @@ const progressBar = document.getElementById("progressBar");
 // The get favourites button element.
 const getFavouritesBtn = document.getElementById("getFavouritesBtn");
 
+const headers = {
+  "Content-Type": "application/json",
+  "x-api-key": `${API_KEY}`,
+};
+
+axios.interceptors.request.use((config) => {
+  config.metadata = {
+    startTime: Date.now(),
+  };
+
+  progressBar.style.width = "0%";
+  document.body.style.cursor = "progress";
+
+  console.log(`Request started: ${config.url}`);
+
+  return config;
+});
+
+axios.interceptors.response.use(
+  (response) => {
+    const duration = Date.now() - response.config.metadata.startTime;
+
+    console.log(`Response received: ${response.config.url} (${duration} ms)`);
+    document.body.style.cursor = "default";
+
+    return response;
+  },
+  (error) => {
+    if (error.config?.metadata) {
+      const duration = Date.now() - error.config.metadata.startTime;
+
+      console.log(`Request failed: ${error.config.url} (${duration} ms)`);
+    }
+
+    return Promise.reject(error);
+  },
+);
+
+const updateProgress = (progressEvent) => {
+  console.log(progressEvent);
+};
+
 async function initialLoad() {
   try {
-    const response = await fetch(
-      "https://api.thecatapi.com/v1/breeds",
-      requestOptions,
-    );
+    const response = await axios.get("https://api.thecatapi.com/v1/breeds", {
+      onDownloadProgress: (progressEvent) => {
+        updateProgress(progressEvent);
+      },
+      headers,
+    });
 
-    const breeds = await response.json();
-    breeds.forEach((breed) => {
+    response.data.forEach((breed) => {
       const option = document.createElement("option");
       option.value = breed.id;
       option.text = breed.name;
@@ -35,85 +76,100 @@ async function initialLoad() {
 initialLoad();
 
 const fetchBreed = async (id) =>
-  (
-    await fetch(
-      `https://api.thecatapi.com/v1/images/search?breed_ids=${id}&limit=10`,
-      requestOptions,
-    )
-  ).json();
+  await axios.get(
+    `https://api.thecatapi.com/v1/images/search?breed_ids=${id}&limit=5`,
+    { headers },
+  );
 
 breedSelect.addEventListener("change", async (e) => {
-  Carousel.clear();
+  try {
+    Carousel.clear();
 
-  const breed = await fetchBreed(e.target.value);
-  breed.forEach((item) => {
-    Carousel.start();
-    const breedItem = Carousel.createCarouselItem(
-      item.url,
-      item.breeds[0].alt_names,
-      item.id,
-    );
-    Carousel.appendCarousel(breedItem);
-  });
+    const breed = await fetchBreed(e.target.value);
+    breed.data.forEach((item) => {
+      Carousel.start();
+      const breedItem = Carousel.createCarouselItem(
+        item.url,
+        item.breeds[0].alt_names,
+        item.id,
+      );
+      Carousel.appendCarousel(breedItem);
+    });
+  } catch (error) {
+    console.log(error);
+  }
 });
 
-/**
- * 3. Fork your own sandbox, creating a new one named "JavaScript Axios Lab."
- */
-/**
- * 4. Change all of your fetch() functions to axios!
- * - axios has already been imported for you within index.js.
- * - If you've done everything correctly up to this point, this should be simple.
- * - If it is not simple, take a moment to re-evaluate your original code.
- * - Hint: Axios has the ability to set default headers. Use this to your advantage
- *   by setting a default header with your API key so that you do not have to
- *   send it manually with all of your requests! You can also set a default base URL!
- */
-
-// JavaScript Axios Lab
-
-/**
- * 5. Add axios interceptors to log the time between request and response to the console.
- * - Hint: you already have access to code that does this!
- * - Add a console.log statement to indicate when requests begin.
- * - As an added challenge, try to do this on your own without referencing the lesson material.
- */
-
-/**
- * 6. Next, we'll create a progress bar to indicate the request is in progress.
- * - The progressBar element has already been created for you.
- *  - You need only to modify its "width" style property to align with the request progress.
- * - In your request interceptor, set the width of the progressBar element to 0%.
- *  - This is to reset the progress with each request.
- * - Research the axios onDownloadProgress config option.
- * - Create a function "updateProgress" that receives a ProgressEvent object.
- *  - Pass this function to the axios onDownloadProgress config option in your event handler.
- * - console.log your ProgressEvent object within updateProgess, and familiarize yourself with its structure.
- *  - Update the progress of the request using the properties you are given.
- * - Note that we are not downloading a lot of data, so onDownloadProgress will likely only fire
- *   once or twice per request to this API. This is still a concept worth familiarizing yourself
- *   with for future projects.
- */
-
-/**
- * 7. As a final element of progress indication, add the following to your axios interceptors:
- * - In your request interceptor, set the body element's cursor style to "progress."
- * - In your response interceptor, remove the progress cursor style from the body element.
- */
-/**
- * 8. To practice posting data, we'll create a system to "favourite" certain images.
- * - The skeleton of this function has already been created for you.
- * - This function is used within Carousel.js to add the event listener as items are created.
- *  - This is why we use the export keyword for this function.
- * - Post to the cat API's favourites endpoint with the given ID.
- * - The API documentation gives examples of this functionality using fetch(); use Axios!
- * - Add additional logic to this function such that if the image is already favourited,
- *   you delete that favourite using the API, giving this function "toggle" functionality.
- * - You can call this function by clicking on the heart at the top right of any image.
- */
 export async function favourite(imgId) {
-  // your code here
+  try {
+    const favourites = await getFavourites();
+    const existingFavourite = favourites.data.find(
+      (fav) => fav.image_id === imgId,
+    );
+
+    if (existingFavourite) {
+      await axios.delete(
+        `https://api.thecatapi.com/v1/favourites/${existingFavourite.id}`,
+        { headers },
+      );
+
+      const newFavourites = favourites.data.filter(
+        (fav) => fav.image_id !== imgId,
+      );
+
+      console.log(newFavourites);
+      addDataToCarousel(newFavourites, {
+        imgSrc: (responseItem) => responseItem.image.url,
+        imgAlt: (responseItem) => responseItem.user_id,
+        imgId: (responseItem) => responseItem.image_id,
+      });
+    } else {
+      const rawBody = JSON.stringify({
+        image_id: imgId,
+      });
+      const newFavourite = await axios.post(
+        "https://api.thecatapi.com/v1/favourites",
+        { image_id: imgId },
+        { headers },
+      );
+    }
+  } catch (error) {
+    console.log(error);
+  }
 }
+
+const getFavourites = async () => {
+  try {
+    return await axios.get("https://api.thecatapi.com/v1/favourites", {
+      headers,
+    });
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+const addDataToCarousel = (response, config) => {
+  response.forEach((responseItem) => {
+    Carousel.start();
+
+    const carouselItem = Carousel.createCarouselItem(
+      config.imgSrc(responseItem),
+      config.imgAlt(responseItem),
+      config.imgId(responseItem),
+    );
+    Carousel.appendCarousel(carouselItem);
+  });
+};
+
+getFavouritesBtn.addEventListener("click", async () => {
+  const favourites = await getFavourites();
+  Carousel.clear();
+  addDataToCarousel(favourites.data, {
+    imgSrc: (responseItem) => responseItem.image.url,
+    imgAlt: (responseItem) => responseItem.user_id,
+    imgId: (responseItem) => responseItem.image_id,
+  });
+});
 
 /**
  * 9. Test your favourite() function by creating a getFavourites() function.
