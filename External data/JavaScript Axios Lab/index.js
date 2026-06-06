@@ -16,6 +16,7 @@ const headers = {
   "x-api-key": `${API_KEY}`,
 };
 
+// Axios interceptor request for getting time when request sended to server and start progress progressBar
 axios.interceptors.request.use((config) => {
   config.metadata = {
     startTime: Date.now(),
@@ -38,6 +39,7 @@ axios.interceptors.request.use((config) => {
   return config;
 });
 
+// Axios interceptor response for getting time when response had gotten and finish progress bar
 axios.interceptors.response.use(
   (response) => {
     const duration = Date.now() - response.config.metadata.startTime;
@@ -67,12 +69,15 @@ axios.interceptors.response.use(
   },
 );
 
+// Function change progress
 const setProgress = (percent) => (progressBar.style.width = `${percent}%`);
 
+// Function console log onDownloadProgress axios
 const updateProgress = (progressEvent) => {
   console.log(progressEvent);
 };
 
+// Getting data from server
 async function initialLoad() {
   try {
     const response = await axios.get("https://api.thecatapi.com/v1/breeds", {
@@ -96,12 +101,14 @@ async function initialLoad() {
 
 initialLoad();
 
+// Getting breed from api
 const fetchBreed = async (id) =>
   await axios.get(
     `https://api.thecatapi.com/v1/images/search?breed_ids=${id}&limit=5`,
     { headers },
   );
 
+// Listener for select
 breedSelect.addEventListener("change", async (e) => {
   try {
     Carousel.clear();
@@ -110,6 +117,7 @@ breedSelect.addEventListener("change", async (e) => {
 
     console.log(breed.data);
 
+    // if breed didn't find
     if (breed.data.length === 0) {
       const notFoundDiv = document.createElement("div");
       notFoundDiv.style.display = "flex";
@@ -122,6 +130,7 @@ breedSelect.addEventListener("change", async (e) => {
       document.body.appendChild(notFoundDiv);
     }
 
+    // Use function to create layout, config need for use different keys as parameter in function
     addDataToCarousel(breed.data, {
       imgSrc: (responseItem) => responseItem.url,
       imgAlt: (responseItem) => responseItem.breeds[0].alt_names,
@@ -132,6 +141,7 @@ breedSelect.addEventListener("change", async (e) => {
   }
 });
 
+// Send favourite photo to server
 export async function favourite(imgId) {
   try {
     const favourites = await getFavourites();
@@ -139,6 +149,7 @@ export async function favourite(imgId) {
       (fav) => fav.image_id === imgId,
     );
 
+    // if user want to delete favourite
     if (existingFavourite) {
       await axios.delete(
         `https://api.thecatapi.com/v1/favourites/${existingFavourite.id}`,
@@ -157,6 +168,7 @@ export async function favourite(imgId) {
         imgId: (responseItem) => responseItem.image_id,
       });
     } else {
+      // Post JSON to api
       const rawBody = JSON.stringify({
         image_id: imgId,
       });
@@ -171,6 +183,7 @@ export async function favourite(imgId) {
   }
 }
 
+// Get favourites function
 const getFavourites = async () => {
   try {
     return await axios.get("https://api.thecatapi.com/v1/favourites", {
@@ -181,6 +194,7 @@ const getFavourites = async () => {
   }
 };
 
+// Function for create layout
 const addDataToCarousel = (response, config) => {
   response.forEach((responseItem) => {
     Carousel.start();
@@ -194,6 +208,7 @@ const addDataToCarousel = (response, config) => {
   });
 };
 
+// Listener for button get Favourites
 getFavouritesBtn.addEventListener("click", async () => {
   const favourites = await getFavourites();
   Carousel.clear();
