@@ -9,6 +9,7 @@ const infoDump = document.getElementById("infoDump");
 const progressBar = document.getElementById("progressBar");
 // The get favourites button element.
 const getFavouritesBtn = document.getElementById("getFavouritesBtn");
+let progressInterval;
 
 const headers = {
   "Content-Type": "application/json",
@@ -19,6 +20,15 @@ axios.interceptors.request.use((config) => {
   config.metadata = {
     startTime: Date.now(),
   };
+  let progress = 0;
+  setProgress(progress);
+
+  progressInterval = setInterval(() => {
+    if (progress < 90) {
+      progress += 10;
+      setProgress(progress);
+    }
+  }, 200);
 
   progressBar.style.width = "0%";
   document.body.style.cursor = "progress";
@@ -35,6 +45,14 @@ axios.interceptors.response.use(
     console.log(`Response received: ${response.config.url} (${duration} ms)`);
     document.body.style.cursor = "default";
 
+    clearInterval(progressInterval);
+
+    setProgress(100);
+
+    setTimeout(() => {
+      setProgress(0);
+    }, 300);
+
     return response;
   },
   (error) => {
@@ -44,9 +62,12 @@ axios.interceptors.response.use(
       console.log(`Request failed: ${error.config.url} (${duration} ms)`);
     }
 
+    clearInterval(progressInterval);
     return Promise.reject(error);
   },
 );
+
+const setProgress = (percent) => (progressBar.style.width = `${percent}%`);
 
 const updateProgress = (progressEvent) => {
   console.log(progressEvent);
@@ -86,14 +107,25 @@ breedSelect.addEventListener("change", async (e) => {
     Carousel.clear();
 
     const breed = await fetchBreed(e.target.value);
-    breed.data.forEach((item) => {
-      Carousel.start();
-      const breedItem = Carousel.createCarouselItem(
-        item.url,
-        item.breeds[0].alt_names,
-        item.id,
-      );
-      Carousel.appendCarousel(breedItem);
+
+    console.log(breed.data);
+
+    if (breed.data.length === 0) {
+      const notFoundDiv = document.createElement("div");
+      notFoundDiv.style.display = "flex";
+      notFoundDiv.style.justifyContent = "center";
+      notFoundDiv.style.alignContent = "center";
+      notFoundDiv.style.height = "100vh";
+      notFoundDiv.textContent = "Breed not found";
+      notFoundDiv.style.fontSize = "16pt";
+      notFoundDiv.style.fontWeight = "Bold";
+      document.body.appendChild(notFoundDiv);
+    }
+
+    addDataToCarousel(breed.data, {
+      imgSrc: (responseItem) => responseItem.url,
+      imgAlt: (responseItem) => responseItem.breeds[0].alt_names,
+      imgId: (responseItem) => responseItem.id,
     });
   } catch (error) {
     console.log(error);
@@ -113,11 +145,12 @@ export async function favourite(imgId) {
         { headers },
       );
 
+      Carousel.clear();
+
       const newFavourites = favourites.data.filter(
         (fav) => fav.image_id !== imgId,
       );
 
-      console.log(newFavourites);
       addDataToCarousel(newFavourites, {
         imgSrc: (responseItem) => responseItem.image.url,
         imgAlt: (responseItem) => responseItem.user_id,
@@ -170,21 +203,3 @@ getFavouritesBtn.addEventListener("click", async () => {
     imgId: (responseItem) => responseItem.image_id,
   });
 });
-
-/**
- * 9. Test your favourite() function by creating a getFavourites() function.
- * - Use Axios to get all of your favourites from the cat API.
- * - Clear the carousel and display your favourites when the button is clicked.
- *  - You will have to bind this event listener to getFavouritesBtn yourself.
- *  - Hint: you already have all of the logic built for building a carousel.
- *    If that isn't in its own function, maybe it should be so you don't have to
- *    repeat yourself in this section.
- */
-
-/**
- * 10. Test your site, thoroughly!
- * - What happens when you try to load the Malayan breed?
- *  - If this is working, good job! If not, look for the reason why and fix it!
- * - Test other breeds as well. Not every breed has the same data available, so
- *   your code should account for this.
- */
