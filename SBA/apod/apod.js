@@ -1,4 +1,5 @@
 import { API_KEY } from "../keys.js";
+import { formatDate, getTime } from "../time.js";
 
 const loader = document.getElementById("loader");
 const carouselExampleControls = document.getElementById(
@@ -23,24 +24,6 @@ axios.interceptors.response.use(
   },
 );
 
-const getTime = () => {
-  const today = new Date();
-  const weekAgo = new Date();
-  weekAgo.setDate(today.getDate() - 7);
-  const endDate = today.toISOString().split("T")[0];
-  const startDate = weekAgo.toISOString().split("T")[0];
-
-  return { endDate, startDate };
-};
-
-const formatDate = (dateString) => {
-  const date = new Date(dateString);
-
-  return `${date.getDate()} ${date.toLocaleDateString("en-US", {
-    month: "long",
-  })} ${date.getFullYear()}`;
-};
-
 // Astronomy Picture of the Day
 const getAPOD = async () => {
   try {
@@ -54,7 +37,7 @@ const getAPOD = async () => {
       renderAPODLayout(element, index === 0);
     });
   } catch (error) {
-    console.log(error);
+    throw error;
   }
 };
 
