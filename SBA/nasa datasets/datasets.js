@@ -1,13 +1,17 @@
 import { getTimeForCTAC, formatDateToCTAC } from "../time.js";
 
+// Loader bootstrap
 const loader = document.getElementById("loader");
+// Get cards bootstrap
 const cards = document.getElementById("cardsContainer");
 
+// Interceptor for start loader
 axios.interceptors.request.use((config) => {
   loader.classList.remove("d-none");
   return config;
 });
 
+// Response interceptor for finish loader and show cards
 axios.interceptors.response.use(
   (response) => {
     loader.classList.add("d-none");
@@ -15,34 +19,44 @@ axios.interceptors.response.use(
     return response;
   },
   (error) => {
+    // Any way finish loader and show cards
     loader.classList.add("d-none");
     cards.classList.remove("d-none");
     return Promise.reject(error);
   },
 );
 
+// Get sputnik pictures
 const getSputnikPics = async () => {
   try {
+    // Get start date and end date from time.js function
     const { startDate, endDate } = getTimeForCTAC();
 
+    // Post request to another API for getting NYC data
     const response = await axios.post(
       "https://earth-search.aws.element84.com/v1/search",
       {
         collections: ["sentinel-2-l2a"],
         bbox: [-74.3, 40.4, -73.6, 41.0],
         datetime: `${startDate}/${endDate}`,
-        limit: 10,
+        limit: 12,
       },
     );
 
-    response.data.features.forEach((element) => {
-      renderCard(element);
-    });
+    return response.data.features;
   } catch (error) {
     throw error;
   }
 };
 
+// Render data
+const renderData = (data) => {
+  data.forEach((element) => {
+    renderCard(element);
+  });
+};
+
+// Render card
 const renderCard = (element) => {
   const container = document.getElementById("cardsContainer");
   const col = document.createElement("div");
@@ -82,4 +96,14 @@ const renderCard = (element) => {
   container.appendChild(col);
 };
 
-getSputnikPics();
+// Init function
+const init = async () => {
+  try {
+    const data = await getSputnikPics();
+    renderData(data);
+  } catch (error) {
+    throw error;
+  }
+};
+
+init();

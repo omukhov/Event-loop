@@ -1,7 +1,9 @@
 import { API_KEY } from "./keys.js";
 
+// Split date format like YYYY-MM-DD
 const splitDate = (date) => date.toISOString().split("T")[0];
 
+// Get start date and end date format like YYYY-MM-DD
 export const getTime = () => {
   const today = new Date();
   const weekAgo = new Date();
@@ -10,6 +12,7 @@ export const getTime = () => {
   return { endDate: splitDate(today), startDate: splitDate(weekAgo) };
 };
 
+// Get start date and end date format like YYYY-MM-DD and time
 export const getTimeForCTAC = () => {
   const today = new Date();
   const weekAgo = new Date();
@@ -21,6 +24,7 @@ export const getTimeForCTAC = () => {
   };
 };
 
+// Change format date format like DD month YYYY
 export const formatDate = (dateString) => {
   const date = new Date(dateString);
 
@@ -29,6 +33,7 @@ export const formatDate = (dateString) => {
   })} ${date.getFullYear()}`;
 };
 
+// Change format date like YYYY-MM-DD and time
 export const formatDateToCTAC = (dateString) => {
   const date = new Date(dateString);
 
@@ -43,6 +48,7 @@ export const formatDateToCTAC = (dateString) => {
   }).format(date);
 };
 
+// Create image url using date
 export const createImageUrl = (imageData) => {
   const date = new Date(imageData.date);
 
