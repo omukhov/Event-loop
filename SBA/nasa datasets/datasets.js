@@ -1,54 +1,25 @@
 import { getTimeForCTAC, formatDateToCTAC } from "../time.js";
 
-// const getSputnikMissions = async () => {
-//   try {
-//     const body = new URLSearchParams({
-//       keyword: "landsat",
-//     });
+const loader = document.getElementById("loader");
+const cards = document.getElementById("cardsContainer");
 
-//     const response = await axios.post(
-//       "https://cmr.earthdata.nasa.gov/search/collections.json",
-//       body.toString(),
-//       {
-//         headers: {
-//           "Content-Type": "application/x-www-form-urlencoded",
-//         },
-//       },
-//     );
+axios.interceptors.request.use((config) => {
+  loader.classList.remove("d-none");
+  return config;
+});
 
-//     return response.data;
-//   } catch (error) {
-//     throw error;
-//   }
-// };
-
-// const getGranules = async (shortName) => {
-//   try {
-//     const response = await axios.get(
-//       "https://cmr.earthdata.nasa.gov/search/granules.json",
-//       {
-//         params: {
-//           short_name: shortName,
-//           bounding_box: "-74.3,40.4,-73.6,41.0",
-//           page_size: 10,
-//         },
-//       },
-//     );
-
-//     return response.data;
-//   } catch (error) {
-//     throw error;
-//   }
-// };
-
-// const loadData = async () => {
-//   const missions = await getSputnikMissions();
-//   const shortName = missions.feed.entry[0].short_name;
-//   const granules = await getGranules(shortName);
-//   console.log(granules);
-// };
-
-// loadData();
+axios.interceptors.response.use(
+  (response) => {
+    loader.classList.add("d-none");
+    cards.classList.remove("d-none");
+    return response;
+  },
+  (error) => {
+    loader.classList.add("d-none");
+    cards.classList.remove("d-none");
+    return Promise.reject(error);
+  },
+);
 
 const getSputnikPics = async () => {
   try {
@@ -73,15 +44,43 @@ const getSputnikPics = async () => {
 };
 
 const renderCard = (element) => {
-  const cardImg = document.querySelector(".card-img-top");
-  const cardTitle = document.querySelector(".card-title");
-  const cardCloud = document.getElementById("cloud");
-  const cardDateTime = document.getElementById("dateTime");
+  const container = document.getElementById("cardsContainer");
+  const col = document.createElement("div");
+  col.className = "col-md-4";
 
-  cardImg.src = element.assets?.thumbnail?.href;
-  cardDateTime.textContent = formatDateToCTAC(element.properties.datetime);
-  cardCloud.textContent = element.properties["eo:cloud_cover"];
-  cardTitle.textContent = element.properties.platform;
+  const card = document.createElement("div");
+  card.className = "card h-100";
+
+  const img = document.createElement("img");
+  img.className = "card-img-top";
+  img.alt = "satellite image";
+  img.src = element.assets?.thumbnail?.href || "";
+
+  const body = document.createElement("div");
+  body.className = "card-body";
+
+  const title = document.createElement("h5");
+  title.className = "card-title";
+  title.textContent = `🛰 ${element.properties.platform}`;
+
+  const date = document.createElement("p");
+  date.className = "card-text";
+  date.textContent = `📅 ${formatDateToCTAC(element.properties.datetime)}`;
+
+  const cloud = document.createElement("p");
+  cloud.className = "card-text";
+  cloud.textContent = `☁️ Cloud: ${element.properties["eo:cloud_cover"]}%`;
+
+  // собираем DOM
+  body.appendChild(title);
+  body.appendChild(date);
+  body.appendChild(cloud);
+
+  card.appendChild(img);
+  card.appendChild(body);
+
+  col.appendChild(card);
+  container.appendChild(col);
 };
 
 getSputnikPics();
