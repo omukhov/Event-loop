@@ -71,7 +71,6 @@ const renderCard = (element) => {
   cloud.className = "card-text";
   cloud.textContent = `☁️ Cloud: ${element.properties["eo:cloud_cover"]}%`;
 
-  // собираем DOM
   body.appendChild(title);
   body.appendChild(date);
   body.appendChild(cloud);
